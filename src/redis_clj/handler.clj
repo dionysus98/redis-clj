@@ -26,6 +26,10 @@
 
 ;; === COMMAND HANDLERS ===
 
+(defmethod command-handler :ping [_ args]
+  (assert (= (count args) 0) "PING takes no args")
+  (resp-encoder/simple-string "PONG"))
+
 (defmethod command-handler :echo [_ args]
   (assert (= (count args) 1) "ECHO cannot take more than 1 arg")
   (resp-encoder/bulk-string (:value (first args))))

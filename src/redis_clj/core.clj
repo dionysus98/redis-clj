@@ -12,16 +12,21 @@
 (defn handle-conn!
   [^Socket socket ^clojure.lang.IFn handler]
   (try
-    (let [^BufferedReader reader (io/reader socket)
-          ^BufferedWriter writer (io/writer socket)]
+    (with-open [^BufferedReader reader (io/reader socket)
+                ^BufferedWriter writer (io/writer socket)]
       (log/info :msg "Handling Message")
       (loop []
-        (when-let [msg (resp-decoder/decode reader)]
-          (.write writer (handler msg))
-          (.flush writer)
-          (recur))))
+        (if-let [msg (resp-decoder/decode reader)]
+          (do
+            (.write writer (handler msg))
+            (.flush writer)
+            (recur))
+          (log/info :msg "client disconnected"))))
     (catch Exception e
-      (log/error :error e))))
+      (log/error :error e))
+    (finally
+      (when-not (.isClosed socket)
+        (.close socket)))))
 
 (defonce !server-socket (atom nil))
 
@@ -32,7 +37,7 @@
     (.close @!server-socket)
     (reset! !server-socket nil))
   ;; == END: DEV stuff ==
-  (with-open [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
+  (let [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
     (.setReuseAddress server-sock true)
     (while true
       (let [^Socket client-sock (.accept ^Socket server-sock)]
