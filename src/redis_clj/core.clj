@@ -5,49 +5,45 @@
            [java.net ServerSocket Socket])
   (:gen-class))
 
+(def ^:const PORT 6379)
 
-;; ===========
-;; note: adding all this type hints so I'd understand what happens BTS. 
-;;       cause i'm dumb.
-;; ===========
-
-
-(defn receive-message
-  "Read a line of textual data from the given socket"
-  ^String
-  [^Socket socket]
-  (let [^BufferedReader reader (io/reader socket)]
-    (.readLine ^String reader)))
-
-(defn send-message
-  "Send the given string message out over the given socket"
-  [^Socket socket ^String msg]
-  (log/info :msg {:socket socket :msg msg})
-  (let [^BufferedWriter writer (io/writer socket)]
-    (.write writer msg)
-    (.flush writer)))
-
-(defonce !server-socket (atom nil))
-
-(defn serve [port handler]
-  (with-open [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
-    ;; Since the tester restarts your program quite often, setting SO_REUSEADDR
-    ;; ensures that we don't run into 'Address already in use' errors
-    (.setReuseAddress server-sock true)
-
-    (with-open [^Socket client-sock (.accept ^Socket server-sock)]
-      (let [msg-in (receive-message client-sock)
-            msg-out (handler msg-in)]
-        (send-message client-sock msg-out)))))
-
-(defn handler
+(defn handle-msg!
   [& args]
   (log/info :args args)
   "+PONG\r\n")
 
+(defn handle-conn!
+  [^Socket socket ^clojure.lang.IFn handler]
+  (try
+    (let [^BufferedReader reader (io/reader socket)
+          ^BufferedWriter writer (io/writer socket)]
+      (log/info :msg "Handling Message")
+      (loop []
+        (when-let [msg (.readLine ^String reader)]
+          (.write writer (handler msg))
+          (.flush writer)
+          (recur))))
+    (catch Exception e
+      (log/error :error e))))
+
+(defonce !server-socket (atom nil))
+
+(defn serve! [port handler]
+  ;; == DEV stuff ==
+  (when (and (instance? ServerSocket @!server-socket)
+             (not (.isClosed @!server-socket)))
+    (.close @!server-socket)
+    (reset! !server-socket nil))
+  ;; == END: DEV stuff ==
+  (with-open [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
+    (.setReuseAddress server-sock true)
+    (while true
+      (let [^Socket client-sock (.accept ^Socket server-sock)]
+        (future (handle-conn! client-sock handler))))))
+
 (defn init! [& _]
-  (log/info :msg "serving on port: " 6379)
-  (serve 6379 handler))
+  (log/info :msg "serving on port: " PORT)
+  (serve! PORT handle-msg!))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -59,5 +55,30 @@
 
 (comment
   (future (init!))
+
+  (.close @!server-socket)
+  (.isClosed @!server-socket)
+
+  (require '[aleph.tcp :as tcp]
+           '[manifold.stream :as s]
+           '[byte-streams :as bs])
+
+
+  (def !tcp-conn (atom nil))
+  (.close @!tcp-conn)
+
+  (try
+    (let [conn (reset! !tcp-conn @(tcp/client {:host "localhost" :port PORT}))]
+
+      (s/consume
+       (fn [msg]
+         (log/info :consumed (bs/to-string msg)))
+       conn)
+
+      (future
+        (doseq [msg ["PING\nPING\n"]]
+          #_(log/info :conn conn)
+          @(s/put! conn msg))))
+    (catch Exception e e))
 
   :rcf)
