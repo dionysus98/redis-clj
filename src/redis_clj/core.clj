@@ -1,16 +1,13 @@
 (ns redis-clj.core
   (:require [clojure.java.io :as io]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [redis-clj.resp.decoder :as resp-decoder]
+            [redis-clj.handler :as handler])
   (:import [java.io BufferedReader BufferedWriter]
            [java.net ServerSocket Socket])
   (:gen-class))
 
 (def ^:const PORT 6379)
-
-(defn handle-msg!
-  [& args]
-  (log/info :args args)
-  "+PONG\r\n")
 
 (defn handle-conn!
   [^Socket socket ^clojure.lang.IFn handler]
@@ -19,7 +16,7 @@
           ^BufferedWriter writer (io/writer socket)]
       (log/info :msg "Handling Message")
       (loop []
-        (when-let [msg (.readLine ^String reader)]
+        (when-let [msg (resp-decoder/decode reader)]
           (.write writer (handler msg))
           (.flush writer)
           (recur))))
@@ -43,7 +40,7 @@
 
 (defn init! [& _]
   (log/info :msg "serving on port: " PORT)
-  (serve! PORT handle-msg!))
+  (serve! PORT handler/message-handler))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -56,8 +53,10 @@
 (comment
   (future (init!))
 
+
   (.close @!server-socket)
   (.isClosed @!server-socket)
+
 
   (require '[aleph.tcp :as tcp]
            '[manifold.stream :as s]
@@ -76,7 +75,8 @@
        conn)
 
       (future
-        (doseq [msg ["PING\nPING\n"]]
+        (doseq [msg ["+PING\r\n+PING\r\n"
+                     "*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n"]]
           #_(log/info :conn conn)
           @(s/put! conn msg))))
     (catch Exception e e))
