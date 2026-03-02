@@ -4,9 +4,7 @@
    [redis-clj.core :as core]))
 
 (comment
-(future (core/init!))
-
-
+  (future (core/init!))
 
   (.close @core/!server-socket)
   (.isClosed @core/!server-socket)

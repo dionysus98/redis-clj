@@ -48,13 +48,23 @@
   ;; [ref](https://redis.io/docs/latest/commands/command/)
   (resp-encoder/array []))
 
+(defn expiry->ttl
+  "rename."
+  [unit-type unit-value]
+  (case (str/lower-case unit-type)
+    "px" (Long/parseLong unit-value)
+    "ex" (* 1000 (Long/parseLong unit-value))
+    nil nil))
+
 (defmethod command-handler :set
   [^KVStore store _ args]
-  (assert (= (count args) 2) "SET takes 2 args")
-  (let [[k v] args]
-    ;; keeping `k` as string type for now.
-    (db/set! store (:value k) v)
-    (resp-encoder/simple-string "OK")))
+  (let [args-len (count args)]
+    (assert (or (= args-len 2) (= args-len 4)) "SET takes 2 or 4 args")
+    (let [[k v exp-unit-type exp-unit-value] args]
+      ;; keeping `k` as string type for now.
+      (db/put! store (:value k) v
+               {:ttl (when (= 4 args-len) (expiry->ttl (:value exp-unit-type) (:value exp-unit-value)))})
+      (resp-encoder/simple-string "OK"))))
 
 (defmethod command-handler :get
   [^KVStore store _ args]

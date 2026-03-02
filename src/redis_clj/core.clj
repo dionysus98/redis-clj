@@ -38,7 +38,7 @@
     (.close @!server-socket)
     (reset! !server-socket nil))
   ;; == END: DEV stuff ==
-  (let [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
+  (with-open [^ServerSocket server-sock (reset! !server-socket (ServerSocket. port))]
     (.setReuseAddress server-sock true)
     (while true
       (let [^Socket client-sock (.accept ^Socket server-sock)]
