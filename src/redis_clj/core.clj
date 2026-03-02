@@ -1,8 +1,9 @@
 (ns redis-clj.core
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [redis-clj.resp.decoder :as resp-decoder]
-            [redis-clj.handler :as handler])
+            [redis-clj.db :as db]
+            [redis-clj.handler :as handler]
+            [redis-clj.resp.decoder :as resp-decoder])
   (:import [java.io BufferedReader BufferedWriter]
            [java.net ServerSocket Socket])
   (:gen-class))
@@ -45,7 +46,7 @@
 
 (defn init! [& _]
   (log/info :msg "serving on port: " PORT)
-  (serve! PORT handler/message-handler))
+  (serve! PORT (partial handler/message-handler (db/init! db/!db))))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -55,35 +56,3 @@
   ;;[x] Uncomment the code below to pass the first stage
   (init!))
 
-(comment
-  (future (init!))
-
-
-  (.close @!server-socket)
-  (.isClosed @!server-socket)
-
-
-  (require '[aleph.tcp :as tcp]
-           '[manifold.stream :as s]
-           '[byte-streams :as bs])
-
-
-  (def !tcp-conn (atom nil))
-  (.close @!tcp-conn)
-
-  (try
-    (let [conn (reset! !tcp-conn @(tcp/client {:host "localhost" :port PORT}))]
-
-      (s/consume
-       (fn [msg]
-         (log/info :consumed (bs/to-string msg)))
-       conn)
-
-      (future
-        (doseq [msg ["+PING\r\n+PING\r\n"
-                     "*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n"]]
-          #_(log/info :conn conn)
-          @(s/put! conn msg))))
-    (catch Exception e e))
-
-  :rcf)

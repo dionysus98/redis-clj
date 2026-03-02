@@ -15,7 +15,6 @@
 
 (def ^:const newline-byte (byte \newline))
 (def ^:const return-byte (byte \return))
-(def ^:const space-byte (byte \space))
 
 (defn read-until-crlf
   "TODO: fix this. handle \r\n properly. read the docs.

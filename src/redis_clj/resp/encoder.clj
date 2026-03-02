@@ -29,9 +29,12 @@
 
 (defmethod encode :bulk-string [{:keys [type value]}]
   (log/info :msg "encoding RESP" type)
-  (-> (rp/type->symbol type)
-      (with-crlf (count (.getBytes value "UTF-8")))
-      (with-crlf value)))
+  (if (nil? value)
+    (-> (rp/type->symbol type)
+        (with-crlf -1))
+    (-> (rp/type->symbol type)
+        (with-crlf (count (.getBytes value "UTF-8")))
+        (with-crlf value))))
 
 (defmethod encode :array [{:keys [type value]}]
   (log/info :msg "encoding RESP" type)
