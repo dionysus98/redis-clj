@@ -1,10 +1,12 @@
 (ns redis-clj.handler
   (:require
    [clojure.string :as str]
+   [clojure.tools.logging :as log]
    [redis-clj.db :as db]
    [redis-clj.resp.encoder :as resp-encoder]
-   [clojure.tools.logging :as log])
-  (:import [redis_clj.db KVStore]))
+   [redis-clj.utils :as utils])
+  (:import
+   [redis_clj.db KVStore]))
 
 (defmulti message-handler
   (fn message-handler-dispatcher [^KVStore _store msg]
@@ -49,14 +51,6 @@
   ;; [ref](https://redis.io/docs/latest/commands/command/)
   (resp-encoder/array []))
 
-(defn expiry->ttl
-  "rename."
-  [unit-type unit-value]
-  (case (str/lower-case unit-type)
-    "px" (Long/parseLong unit-value)
-    "ex" (* 1000 (Long/parseLong unit-value))
-    nil nil))
-
 (defmethod command-handler :set
   [^KVStore store _ args]
   (let [args-len (count args)]
@@ -64,7 +58,7 @@
     (let [[k v exp-unit-type exp-unit-value] args]
       ;; keeping `k` as string type for now.
       (db/put! store (:value k) v
-               {:ttl (when (= 4 args-len) (expiry->ttl (:value exp-unit-type) (:value exp-unit-value)))})
+               {:ttl (when (= 4 args-len) (utils/expiry->ttl (:value exp-unit-type) (:value exp-unit-value)))})
       (resp-encoder/simple-string "OK"))))
 
 (defmethod command-handler :get
@@ -73,3 +67,12 @@
   (let [[k] args]
     ;; keeping `k` as string type for now.
     (resp-encoder/encode (db/get! store (:value k)))))
+
+(defmethod command-handler :info
+  [^KVStore _store _ args]
+  (assert (<= (count args) 1) "INFO takes 1 or no arg")
+  (let [[k] args]
+    (case (keyword (:value k))
+      :replication (resp-encoder/bulk-string "# Replication\nrole:master\n")
+      (resp-encoder/bulk-string "TODO\n"))))
+

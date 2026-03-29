@@ -42,7 +42,11 @@
     (.setReuseAddress server-sock true)
     (while true
       (let [^Socket client-sock (.accept ^Socket server-sock)]
-        (future (handle-conn! client-sock handler))))))
+        (future
+          (try
+            (handle-conn! client-sock handler)
+            (catch Exception e
+              (println (ex-message e)))))))))
 
 (defn init! [opts]
   (log/info :msg "serving on port: " (:port opts))

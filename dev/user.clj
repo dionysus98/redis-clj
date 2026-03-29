@@ -1,10 +1,11 @@
 (ns dev.user
   (:require
    [clojure.tools.logging :as log]
-   [redis-clj.core :as core]))
+   [redis-clj.core :as core]
+   [redis-clj.const :as const]))
 
 (comment
-  (future (core/init!))
+  (future (core/init! {:port const/PORT}))
 
   (.close @core/!server-socket)
   (.isClosed @core/!server-socket)
