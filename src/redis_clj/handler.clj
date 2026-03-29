@@ -2,7 +2,8 @@
   (:require
    [clojure.string :as str]
    [redis-clj.db :as db]
-   [redis-clj.resp.encoder :as resp-encoder])
+   [redis-clj.resp.encoder :as resp-encoder]
+   [clojure.tools.logging :as log])
   (:import [redis_clj.db KVStore]))
 
 (defmulti message-handler
@@ -27,7 +28,7 @@
 (defmethod message-handler :array
   [^KVStore store {:keys [value]}]
   (let [[command & args] value]
-    (println :msg ":command" command)
+    (log/debug :msg ":command" command)
     (command-handler store command args)))
 
 ;; === COMMAND HANDLERS ===

@@ -1,14 +1,14 @@
 (ns redis-clj.core
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [redis-clj.command :as command]
+            [redis-clj.const :as const]
             [redis-clj.db :as db]
             [redis-clj.handler :as handler]
             [redis-clj.resp.decoder :as resp-decoder])
   (:import [java.io BufferedReader BufferedWriter]
            [java.net ServerSocket Socket])
   (:gen-class))
-
-(def ^:const PORT 6379)
 
 (defn handle-conn!
   [^Socket socket ^clojure.lang.IFn handler]
@@ -44,15 +44,32 @@
       (let [^Socket client-sock (.accept ^Socket server-sock)]
         (future (handle-conn! client-sock handler))))))
 
-(defn init! [& _]
-  (log/info :msg "serving on port: " PORT)
-  (serve! PORT (partial handler/message-handler (db/init! db/!db))))
+(defn init! [opts]
+  (log/info :msg "serving on port: " (:port opts))
+  (serve! (:port opts) (partial handler/message-handler (db/init! db/!db))))
 
 (defn -main
   "I don't do a whole lot ... yet."
-  [& _]
+  [& args]
   ;; You can use print statements as follows for debugging, they'll be visible when running tests.
-  (log/info "Logs from your program will appear here!")
+  #_(log/info "Logs from your program will appear here!")
   ;;[x] Uncomment the code below to pass the first stage
-  (init!))
+  (let [{:keys [options errors summary]} (command/parse-cli args)]
+    #_(println commands)
+    (cond
+      errors
+      (do
+        (println errors)
+        (println "USAGE: ")
+        (println summary))
+
+      (:help options)
+      (do
+        (println "USAGE: ")
+        (println summary))
+
+      (:version options)
+      (println "redis_clj 0.0.1")
+
+      :else  (init! options))))
 
