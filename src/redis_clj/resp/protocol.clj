@@ -1,4 +1,5 @@
-(ns redis-clj.resp.protocol)
+(ns redis-clj.resp.protocol
+  "REF: https://redis.io/docs/latest/develop/reference/protocol-spec/#resp-protocol-description")
 
 (def ^:const CRLF "\r\n")
 

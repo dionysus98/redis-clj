@@ -2,12 +2,13 @@
   (:require [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [redis-clj.command :as command]
-            [redis-clj.const :as const]
+            [redis-clj.config :as config]
             [redis-clj.db :as db]
             [redis-clj.handler :as handler]
             [redis-clj.resp.decoder :as resp-decoder])
   (:import [java.io BufferedReader BufferedWriter]
-           [java.net ServerSocket Socket])
+           [java.net ServerSocket Socket]
+           [redis_clj.config ServerConfig])
   (:gen-class))
 
 (defn handle-conn!
@@ -48,9 +49,9 @@
             (catch Exception e
               (println (ex-message e)))))))))
 
-(defn init! [opts]
-  (log/info :msg "serving on port: " (:port opts))
-  (serve! (:port opts) (partial handler/message-handler (db/init! db/!db))))
+(defn init! [^ServerConfig opts]
+  (log/info :msg "serving on port: " (.-port opts))
+  (serve! (.-port opts) (partial handler/message-handler opts (db/init! db/!db))))
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -75,5 +76,4 @@
       (:version options)
       (println "redis_clj 0.0.1")
 
-      :else  (init! options))))
-
+      :else  (init! (config/>server-config options)))))

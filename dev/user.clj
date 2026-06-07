@@ -2,10 +2,18 @@
   (:require
    [clojure.tools.logging :as log]
    [redis-clj.core :as core]
-   [redis-clj.const :as const]))
+   [redis-clj.const :as const]
+   [redis-clj.config :as config])
+  (:import [redis_clj.config ServerConfig]))
+
+
 
 (comment
-  (future (core/init! {:port const/PORT}))
+
+  (ns-unmap *ns* 'ServerConfig)
+
+  (future (core/init! (config/>server-config {:port const/PORT})
+                      #_(ServerConfig. const/PORT nil)))
 
   (.close @core/!server-socket)
   (.isClosed @core/!server-socket)
