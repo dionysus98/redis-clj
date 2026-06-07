@@ -6,3 +6,6 @@ event loops, the Redis protocol and more.
 
 ## References:
 - [RESP Protocol](https://redis.io/docs/latest/develop/reference/protocol-spec/#bulk-strings)
+
+## task cursor:
+> LISTS [RPUSH](https://app.codecrafters.io/courses/redis/stages/mh6)
